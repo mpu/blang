@@ -1,0 +1,18 @@
+Type checking?
+  collect constraints from code
+  a chunk of code constrain generic types
+  substitution(?) allowed when constraints are ok
+  
+Extensive hooking:
+  function/method lookup
+  operator lookups
+  field lookup
+  copy
+  scope entry
+  scope exit
+  death
+  
+Patterns:
+  - printf, typed
+  - wrapped applicaton (vareadic)
+  - stack allocation

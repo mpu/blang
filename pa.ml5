@@ -1,0 +1,55 @@
+#load "pa_extend.cmo";;
+#load "q_ast.cmo";;
+open Pcaml;;
+
+(* Syntax extension to generate low level syntax trees
+   conveniently.
+*)
+
+let mklistexp loc last =
+  let rec loop top = function
+  | [] ->
+      begin match last with
+        Some e -> e
+      | None -> <:expr< [] >>
+      end
+  | e1 :: el ->
+    let loc =
+      if top then loc else
+      Ploc.encl (MLast.loc_of_expr e1) loc
+    in <:expr< $e1$ :: $loop false el$ >>
+  in loop true
+
+let _ =
+  EXTEND
+    GLOBAL: expr;
+    expr:
+      [ [ "low"; s = low_scope -> s ]
+      ];
+    low_type:
+      [ [ "i32" -> <:expr< LTint 4 >> ]
+      ];
+    low_expr:
+      [ "+" LEFTA
+        [ x = SELF; "+"; y = SELF -> <:expr< LEbinop ($x$, LBadd, $y$) >>
+        | x = SELF; "-"; y = SELF -> <:expr< LEbinop ($x$, LBsub, $y$) >>
+        ]
+      | "simple"
+        [ i = INT -> <:expr< LEnum $int:i$ >>
+        | v = LIDENT -> <:expr< LEvar $str:v$ >>
+        | "`"; "num"; ":"; v = LIDENT -> <:expr< LEnum ($lid:v$) >>
+        ]
+      ];
+    low_stmt:
+      [ [ "var"; v = LIDENT; ":"; t = low_type; ";" ->
+          <:expr< LSdecl ($str:v$, $t$) >>
+        | v = LIDENT; "="; e = low_expr; ";" ->
+          <:expr< LSassign ($str:v$, $e$) >>
+	| s = low_scope ->
+	  <:expr< LSscope $s$ >>
+        ]
+      ];
+    low_scope:
+      [ [ "{"; l = LIST0 low_stmt; "}" -> mklistexp loc None l ]
+      ];
+  END
